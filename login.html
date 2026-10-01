@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Entrar — LinkHub</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="page">
+    <section class="auth-card">
+      <h1>Entrar no LinkHub</h1>
+      <p>Use sua conta Google para entrar.</p>
+      <button id="googleLogin" class="link-button">Continuar com Google</button>
+      <p id="status" class="muted"></p>
+      <a class="login-link" href="index.html">Voltar</a>
+    </section>
+  </main>
+
+  <script type="module">
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+    // COLOQUE AQUI as informações do seu projeto Supabase.
+    const SUPABASE_URL = 'COLOQUE_SUA_URL_AQUI';
+    const SUPABASE_ANON_KEY = 'COLOQUE_SUA_CHAVE_PUBLICA_AQUI';
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    document.querySelector('#googleLogin').onclick = async () => {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.origin + '/dashboard.html' }
+      });
+      if (error) document.querySelector('#status').textContent = error.message;
+    };
+  </script>
+</body>
+</html>

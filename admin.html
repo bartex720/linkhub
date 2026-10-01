@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Admin — LinkHub</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="dashboard">
+    <section class="editor-card">
+      <h1>Painel administrativo</h1>
+      <p>Usuários cadastrados e IPs armazenados de forma anonimizada.</p>
+      <div id="users">Carregando...</div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+    const SUPABASE_URL = 'COLOQUE_SUA_URL_AQUI';
+    const SUPABASE_ANON_KEY = 'COLOQUE_SUA_CHAVE_PUBLICA_AQUI';
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) location.href = 'login.html';
+
+    // A segurança real vem da policy is_admin() no SQL.
+    const { data, error } = await supabase
+      .from('admin_user_view')
+      .select('email, anonymized_ip, created_at')
+      .order('created_at', { ascending: false });
+
+    const box = document.querySelector('#users');
+    if (error) {
+      box.textContent = 'Sem permissão ou erro: ' + error.message;
+    } else {
+      box.innerHTML = data.map(u => `
+        <div class="user-row">
+          <strong>${escapeHtml(u.email || '')}</strong>
+          <span>${escapeHtml(u.anonymized_ip || 'não informado')}</span>
+          <small>${new Date(u.created_at).toLocaleString('pt-BR')}</small>
+        </div>
+      `).join('');
+    }
+
+    function escapeHtml(value) {
+      return String(value).replaceAll('&','&amp;').replaceAll('<','&lt;')
+        .replaceAll('>','&gt;').replaceAll('"','&quot;');
+    }
+  </script>
+</body>
+</html>

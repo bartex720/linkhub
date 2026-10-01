@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Meu painel — LinkHub</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="dashboard">
+    <header class="topbar">
+      <strong>LinkHub</strong>
+      <button id="logout" class="small-button">Sair</button>
+    </header>
+
+    <section class="editor-card">
+      <h1>Editar minha página</h1>
+
+      <label>Nome
+        <input id="name" placeholder="Seu nome">
+      </label>
+
+      <label>Descrição
+        <textarea id="bio" placeholder="Uma descrição curta"></textarea>
+      </label>
+
+      <div class="preview-box">
+        <h2>Prévia</h2>
+        <div class="mini-profile">
+          <div class="avatar">LH</div>
+          <h3 id="previewName">Seu Nome</h3>
+          <p id="previewBio">Sua descrição</p>
+          <div id="previewLinks"></div>
+        </div>
+      </div>
+
+      <h2>Botões</h2>
+      <div id="links"></div>
+      <button id="addLink" class="link-button">+ Adicionar botão</button>
+      <button id="save" class="primary-button">Salvar página</button>
+      <p id="status" class="muted"></p>
+    </section>
+  </main>
+
+  <script type="module">
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+    // COLOQUE AQUI as informações do seu projeto Supabase.
+    const SUPABASE_URL = 'COLOQUE_SUA_URL_AQUI';
+    const SUPABASE_ANON_KEY = 'COLOQUE_SUA_CHAVE_PUBLICA_AQUI';
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let links = [
+      { title: 'Meu site', url: 'https://example.com' }
+    ];
+
+    const $ = (s) => document.querySelector(s);
+
+    function render() {
+      $('#previewName').textContent = $('#name').value || 'Seu Nome';
+      $('#previewBio').textContent = $('#bio').value || 'Sua descrição';
+      $('#previewLinks').innerHTML = '';
+
+      $('#links').innerHTML = '';
+      links.forEach((link, i) => {
+        const row = document.createElement('div');
+        row.className = 'link-editor';
+        row.innerHTML = `
+          <input value="${escapeHtml(link.title)}" data-i="${i}" data-field="title" placeholder="Texto do botão">
+          <input value="${escapeHtml(link.url)}" data-i="${i}" data-field="url" placeholder="https://seulink.com">
+          <button data-remove="${i}" class="danger-button">X</button>
+        `;
+        $('#links').appendChild(row);
+
+        const preview = document.createElement('a');
+        preview.className = 'link-button';
+        preview.href = link.url || '#';
+        preview.textContent = link.title || 'Botão';
+        preview.target = '_blank';
+        $('#previewLinks').appendChild(preview);
+      });
+
+      document.querySelectorAll('[data-field]').forEach(input => {
+        input.oninput = e => {
+          links[+e.target.dataset.i][e.target.dataset.field] = e.target.value;
+          render();
+        };
+      });
+
+      document.querySelectorAll('[data-remove]').forEach(btn => {
+        btn.onclick = () => { links.splice(+btn.dataset.remove, 1); render(); };
+      });
+    }
+
+    function escapeHtml(value) {
+      return String(value).replaceAll('&','&amp;').replaceAll('<','&lt;')
+        .replaceAll('>','&gt;').replaceAll('"','&quot;');
+    }
+
+    $('#name').oninput = render;
+    $('#bio').oninput = render;
+    $('#addLink').onclick = () => { links.push({title:'Novo botão',url:'https://example.com'}); render(); };
+
+    $('#save').onclick = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return location.href = 'login.html';
+
+      const { error } = await supabase.from('pages').upsert({
+        user_id: user.id,
+        display_name: $('#name').value,
+        bio: $('#bio').value,
+        links
+      });
+      $('#status').textContent = error ? error.message : 'Salvo!';
+    };
+
+    $('#logout').onclick = async () => {
+      await supabase.auth.signOut();
+      location.href = 'index.html';
+    };
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) location.href = 'login.html';
+    render();
+  </script>
+</body>
+</html>
